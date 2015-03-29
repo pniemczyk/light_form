@@ -63,7 +63,7 @@ module LightForm
       properties_from = self.class.config[:properties_transform] || {}
       properties_from.each do |key_to, hash|
         params[key_to] = params.delete(hash[:from]) if hash[:from]
-        params[key_to] = hash[:default] if params[key_to].empty? && hash[:default]
+        next params[key_to] = hash[:default] if params[key_to].empty? && hash[:default]
         next unless hash[:transform_with]
         transformation = hash[:transform_with]
         trans_proc     = transformation.is_a?(Symbol) ? method(transformation) : transformation

@@ -55,6 +55,19 @@ describe LightForm::Form do
         end
       end
 
+      context 'add with :default and :transform_with option' do
+        let(:time) { Time.parse('2015-03-29 14:41:28 +0200') }
+        subject do
+          object_factory(attributes: { time: '' }) do
+            property :time, default: Time.parse('2015-03-29 14:41:28 +0200'), transform_with: -> (v) { Time.parse(v) }
+          end
+        end
+
+        it 'assign property value from key :default when value is empty and skip :transform_with' do
+          expect(subject.time).to eq(time)
+        end
+      end
+
       context 'add with :transform_with option assign property value after transformation' do
         it 'by proc' do
           test_obj = object_factory(attributes: { number: '12' }) do
