@@ -10,7 +10,7 @@ Gem::Specification.new do |spec|
   spec.email         = ['pniemczyk.info@gmail.com']
   spec.summary       = %q{Light Form}
   spec.description   = %q{Light form}
-  spec.homepage      = ''
+  spec.homepage      = 'https://github.com/pniemczyk/light_form'
   spec.license       = 'MIT'
 
   spec.files         = `git ls-files -z`.split('\x0')
