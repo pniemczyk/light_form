@@ -29,5 +29,39 @@ describe LightForm::Form do
         expect { test_obj.skip }.to raise_error(NoMethodError)
       end
     end
+
+    context 'options' do
+      context 'add with :from option' do
+        it 'assign property value from key provided by :from option' do
+          test_obj = object_factory(attributes: { aB: 'ab' }) do
+            property :ab, from: :aB
+          end
+
+          expect(test_obj.ab).to eq('ab')
+        end
+      end
+
+      context 'add with :transform_with option assign property value after transformation' do
+        it 'by proc' do
+          test_obj = object_factory(attributes: { number: '12' }) do
+            property :number, transform_with: -> (v) { v.to_i }
+          end
+
+          expect(test_obj.number).to eq(12)
+        end
+
+        it 'by method' do
+          test_obj = object_factory(attributes: { number: '12' }) do
+            property :number, transform_with: :convert_to_number
+
+            def convert_to_number(value)
+              value.to_i
+            end
+          end
+
+          expect(test_obj.number).to eq(12)
+        end
+      end
+    end
   end
 end
