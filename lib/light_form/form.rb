@@ -27,20 +27,22 @@ module LightForm
 
       private
 
+      def _properties_transform
+        config[:properties_transform] ||= {}
+      end
+
+      def _properties
+        config[:properties] ||= Set.new
+      end
+
       def _add_property_transform(prop_name, options = {})
-        return if !options.key?(:from) && !options.key?(:transform_with)
-        config[:properties_transform][prop_name] = options.slice(:from, :transform_with)
-      rescue NoMethodError
-        config[:properties_transform] = { prop_name => options.slice(:from, :transform_with) }
+        transformations = options.slice(:from, :transform_with, :default)
+        return if transformations.empty?
+        _properties_transform[prop_name] = transformations
       end
 
       def _add_property(prop_name)
-        send(:attr_accessor, prop_name) if config[:properties].add?(prop_name)
-      rescue NoMethodError
-        raise if config[:properties]
-        config[:properties] = Set.new
-        config[:properties].add(prop_name)
-        send(:attr_accessor, prop_name)
+        send(:attr_accessor, prop_name) if _properties.add?(prop_name)
       end
 
       def _add_property_validation(prop_name, validation)
@@ -61,6 +63,7 @@ module LightForm
       properties_from = self.class.config[:properties_transform] || {}
       properties_from.each do |key_to, hash|
         params[key_to] = params.delete(hash[:from]) if hash[:from]
+        params[key_to] = hash[:default] if params[key_to].empty? && hash[:default]
         next unless hash[:transform_with]
         transformation = hash[:transform_with]
         trans_proc     = transformation.is_a?(Symbol) ? method(transformation) : transformation

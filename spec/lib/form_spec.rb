@@ -43,6 +43,18 @@ describe LightForm::Form do
         end
       end
 
+      context 'add with :default option' do
+        subject do
+          object_factory(attributes: { ab: '' }) do
+            property :ab, default: 'Default'
+          end
+        end
+
+        it 'assign property value from key provided by :default option when value is empty' do
+          expect(subject.ab).to eq('Default')
+        end
+      end
+
       context 'add with :transform_with option assign property value after transformation' do
         it 'by proc' do
           test_obj = object_factory(attributes: { number: '12' }) do
