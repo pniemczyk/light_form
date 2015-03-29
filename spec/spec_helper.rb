@@ -6,6 +6,7 @@ require 'coveralls'
 Coveralls.wear!
 
 require 'light_form'
+Dir['./spec/support/**/*.rb'].sort.each { |f| require f }
 
 RSpec.configure do |config|
   config.filter_run :focus
