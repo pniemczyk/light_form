@@ -30,14 +30,16 @@ describe LightForm::Form do
       end
     end
 
-    context 'options' do
+    context 'with options' do
       context 'add with :from option' do
-        it 'assign property value from key provided by :from option' do
-          test_obj = object_factory(attributes: { aB: 'ab' }) do
+        subject do
+          object_factory(attributes: { aB: 'ab' }) do
             property :ab, from: :aB
           end
+        end
 
-          expect(test_obj.ab).to eq('ab')
+        it 'assign property value from key provided by :from option' do
+          expect(subject.ab).to eq('ab')
         end
       end
 
@@ -60,6 +62,19 @@ describe LightForm::Form do
           end
 
           expect(test_obj.number).to eq(12)
+        end
+      end
+
+      context 'add with :validates option' do
+        subject do
+          object_factory(real_class_name: 'FakeForm', attributes: { name: '' }) do
+            property :name, validates: { presence: true }
+          end
+        end
+
+        it 'attribute has validation' do
+          expect(subject.valid?).to eq(false)
+          expect(subject.errors.as_json).to eq(name: ["can't be blank"])
         end
       end
     end

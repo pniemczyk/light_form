@@ -22,7 +22,10 @@ module LightForm
       def property(prop_name, options = {}, &_block)
         _add_property(prop_name)
         _add_property_transform(prop_name, options)
+        _add_property_validation(prop_name, options[:validates]) if options[:validates]
       end
+
+      private
 
       def _add_property_transform(prop_name, options = {})
         return if !options.key?(:from) && !options.key?(:transform_with)
@@ -38,6 +41,10 @@ module LightForm
         config[:properties] = Set.new
         config[:properties].add(prop_name)
         send(:attr_accessor, prop_name)
+      end
+
+      def _add_property_validation(prop_name, validation)
+        validates(prop_name, validation)
       end
     end
 
