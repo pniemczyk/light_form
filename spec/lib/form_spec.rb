@@ -68,6 +68,19 @@ describe LightForm::Form do
         end
       end
 
+      context 'add with :default and :with option' do
+        let(:time) { Time.parse('2015-03-29 14:41:28 +0200') }
+        subject do
+          object_factory(attributes: { time: '' }) do
+            property :time, default: Time.parse('2015-03-29 14:41:28 +0200'), with: -> (v) { Time.parse(v) }
+          end
+        end
+
+        it 'assign property value from key :default when value is empty and skip :transform_with' do
+          expect(subject.time).to eq(time)
+        end
+      end
+
       context 'add with :transform_with option assign property value after transformation' do
         it 'by proc' do
           test_obj = object_factory(attributes: { number: '12' }) do
@@ -80,6 +93,28 @@ describe LightForm::Form do
         it 'by method' do
           test_obj = object_factory(attributes: { number: '12' }) do
             property :number, transform_with: :convert_to_number
+
+            def convert_to_number(value)
+              value.to_i
+            end
+          end
+
+          expect(test_obj.number).to eq(12)
+        end
+      end
+
+      context 'add with :with option assign property value after transformation' do
+        it 'by proc' do
+          test_obj = object_factory(attributes: { number: '12' }) do
+            property :number, with: -> (v) { v.to_i }
+          end
+
+          expect(test_obj.number).to eq(12)
+        end
+
+        it 'by method' do
+          test_obj = object_factory(attributes: { number: '12' }) do
+            property :number, with: :convert_to_number
 
             def convert_to_number(value)
               value.to_i
@@ -103,5 +138,16 @@ describe LightForm::Form do
         end
       end
     end
+    # context 'add nested' do
+    #   it 'first_level' do
+    #     test_obj = object_factory(attributes: { ab: { cd: 'cd'} }) do
+    #       property :ab do
+    #         property :cd
+    #       end
+    #     end
+
+    #     expect(test_obj.ab).to eq(cd: 'cd')
+    #   end
+    # end
   end
 end
