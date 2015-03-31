@@ -1,9 +1,4 @@
-describe LightForm::Form do
-  class ChildModel
-    include ActiveModel::Model
-    attr_accessor :name, :age
-  end
-
+describe LightForm::Lash do
   context '.properties' do
     subject do
       class_factory do
@@ -132,7 +127,7 @@ describe LightForm::Form do
 
       context 'add with :validates option' do
         subject do
-          object_factory(real_class_name: 'FakeForm', attributes: { name: '' }) do
+          object_factory(real_class_name: 'FakeHash', attributes: { name: '' }) do
             property :name, validates: { presence: true }
           end
         end
@@ -142,90 +137,25 @@ describe LightForm::Form do
           expect(subject.errors.as_json).to eq(name: ["can't be blank"])
         end
       end
-
-      context 'add with :model option' do
-        subject do
-          object_factory(attributes: { child: { name: 'Tom', age: 2 } }) do
-            property :child, model: ChildModel
-          end
-        end
-
-        it 'create model for attribute' do
-          expect(subject.child).to be_a(ChildModel)
-          expect(subject.child.name).to eq('Tom')
-          expect(subject.child.age).to eq(2)
-        end
-      end
-
-      context 'add with :collection option' do
-        it 'raise error when is not a Array' do
-          expect {
-            object_factory(attributes: { children: { name: 'Tom', age: 2 } }) do
-              property :children, collection: true
-            end
-          }.to raise_error
-        end
-
-        context 'with :model' do
-          subject do
-            attributes = {
-              children: [
-                { name: 'Tom', age: 2 },
-                { name: 'Emi', age: 4 }
-              ]
-            }
-
-            object_factory(attributes: attributes) do
-              property :children, collection: ChildModel
-            end
-          end
-
-          it 'returns array of models' do
-            expect(subject.children.map { |m| m.class }).to eq([ChildModel, ChildModel])
-            expect(subject.children.count).to eq(2)
-            expect(subject.children.first.name).to eq('Tom')
-            expect(subject.children.last.name).to eq('Emi')
-          end
-        end
-
-        context 'with :model and :uniq' do
-          subject do
-            attributes = {
-              children: [
-                { name: 'Tom', age: 2 },
-                { name: 'Tom', age: 2 }
-              ]
-            }
-
-            object_factory(attributes: attributes) do
-              property :children, collection: ChildModel, uniq: true
-            end
-          end
-
-          it 'returns array of models' do
-            expect(subject.children.map { |m| m.class }).to eq([ChildModel])
-            expect(subject.children.count).to eq(1)
-            expect(subject.children.first.name).to eq('Tom')
-          end
-        end
-
-      end
-
     end
-    context 'add nested' do
-      it 'is awesome' do
-        test_obj = object_factory(attributes: { ab: { cd: { child: { age: '1' } }} }) do
-          property :ab do
-            property :cd do
-              property :child, model: ChildModel
-            end
-          end
-        end
 
-        expect(test_obj.ab).not_to eq(nil)
-        expect(test_obj.ab.cd.child).to be_a(ChildModel)
-        expect(test_obj.ab.cd.child.age).to eq('1')
+    it 'is a hash' do
+      test_obj = object_factory(real_class_name: 'LashTest', attributes: { name: '' }) do
+        property :name, validates: { presence: true }
       end
+
+      expect(test_obj).to eq(name: '')
+    end
+
+    it 'is a hash' do
+      test_obj = object_factory(real_class_name: 'LashTest1', attributes: { errors: '' }) do
+        property :errors, validates: { presence: true }
+      end
+      expect(test_obj.valid?).to eq(false)
+      expect(test_obj).to eq(errors: '')
+      expect(test_obj.errors).to eq('')
+      expect(test_obj.errors_overriden?).to eq(true)
+      expect(test_obj._errors.as_json).to eq(errors: ["can't be blank"])
     end
   end
 end
