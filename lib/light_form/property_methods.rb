@@ -2,10 +2,11 @@ require 'set'
 require 'active_support'
 
 module LightForm
-  module PropertyMethods
-    TransformationError    = Class.new(StandardError)
-    MissingCollectionError = Class.new(StandardError)
+  TransformationError    = Class.new(StandardError)
+  MissingCollectionError = Class.new(StandardError)
+  MissingParamError      = Class.new(StandardError)
 
+  module PropertyMethods
     def self.included(base)
       base.extend(ClassMethods)
     end
@@ -49,7 +50,7 @@ module LightForm
       end
 
       def _add_property_transform(prop_name, options = {})
-        transformations = options.slice(:from, :transform_with, :with, :default, :model, :collection, :uniq)
+        transformations = options.slice(:from, :transform_with, :with, :default, :model, :collection, :uniq, :required)
         return if transformations.empty?
         _properties_transform[prop_name] = transformations
       end
@@ -129,6 +130,7 @@ module LightForm
       properties_from = self.class.config[:properties_transform] || {}
       properties_from.clone.each do |key_to, hash|
         _update_key!(params, key_to, hash)
+        fail(MissingParamError, key_to.to_s) if hash[:required] && !params.key?(key_to)
         set_default = (params[key_to].nil? || params[key_to].empty?) && hash[:default]
         _update_value_as_default!(params, key_to, hash) if set_default
         _transform_value!(params, key_to, hash) unless set_default

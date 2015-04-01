@@ -208,10 +208,18 @@ describe LightForm::Form do
             expect(subject.children.first.name).to eq('Tom')
           end
         end
-
       end
 
+      context 'add with :required option' do
+
+        it 'raise MissingParamError when required param missing' do
+          expect {
+            object_factory { property :abc, required: true }
+          }.to raise_error(LightForm::MissingParamError, 'abc')
+        end
+      end
     end
+
     context 'add nested' do
       it 'hold proper structure' do
         test_obj = object_factory(
