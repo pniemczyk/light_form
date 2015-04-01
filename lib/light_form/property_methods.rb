@@ -76,7 +76,7 @@ module LightForm
     def valid?
       return (_check_validation && super) unless errors_overriden?
       @_errors = @errors
-      @errors  = ActiveModel::Errors.new(self)
+      @errors ||= ActiveModel::Errors.new(self)
       stored_method = method(:errors)
       errors_method = -> { @errors }
       define_singleton_method(:errors) { errors_method.call }
