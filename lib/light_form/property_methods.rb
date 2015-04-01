@@ -73,26 +73,33 @@ module LightForm
       self.class.config[:errors_overriden] == true
     end
 
-    def valid?
-      return [_check_validation, super].all? unless errors_overriden?
+    def valid?(context = nil)
+      @errors = ActiveModel::Errors.new(self)
+      return [_check_validation, _valid_without_clear?(context)].all? unless errors_overriden?
       @_errors = @errors
-      @errors ||= ActiveModel::Errors.new(self)
       stored_method = method(:errors)
       errors_method = -> { @errors }
       define_singleton_method(:errors) { errors_method.call }
-      result, store, @_errors, @errors = [_check_validation, super].all?, @_errors, @errors, store
+      result, store, @_errors, @errors = [_check_validation, _valid_without_clear?(context)].all?, @_errors, @errors, store
       define_singleton_method(:errors) { stored_method.call }
       result
     end
 
     private
 
+    def _valid_without_clear?(context = nil)
+      current_context, self.validation_context = validation_context, context
+      run_validations!
+    ensure
+      self.validation_context = current_context
+    end
+
     def _validation_errors(obj)
       obj.errors if obj.respond_to?(:valid?) && !obj.valid?
     end
 
     def _check_validation
-      @errors ||= ActiveModel::Errors.new(self)
+      @errors = ActiveModel::Errors.new(self)
       properties = _properties.delete(_properties_sources.keys)
       properties.each do |prop|
         public_send(prop).tap do |subject|
