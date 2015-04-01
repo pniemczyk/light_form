@@ -2,6 +2,17 @@ describe LightForm::Form do
   class ChildModel
     include ActiveModel::Model
     attr_accessor :name, :age
+    def equality_state
+      [:name, :age].map { |attr| public_send("#{attr}") }
+    end
+
+    def ==(o)
+      eql?(o)
+    end
+
+    def eql?(o)
+      o.class == self.class && o.equality_state == equality_state
+    end
   end
 
   context '.properties' do
@@ -220,25 +231,27 @@ describe LightForm::Form do
     end
 
     context 'add nested' do
-      it 'hold proper structure' do
-        test_obj = object_factory(
-          attributes: {
-            ab: {
-              cd: {
-                child: { age: '1', name: 'pawel', skip: 'av' }
-              },
-              ef: [
-                { age: '31', name: 'Pawel', skip: 'wrong' },
-                { age: '32', name: 'Sylwia', skip: 'bad' }
-              ],
-              gh: [
-                { age: '31', name: 'Pawel', skip: 'wrong' },
-                { age: '32', name: 'Sylwia', skip: 'bad' },
-                { age: '32', name: 'Sylwia', skip: 'bad' }
-              ]
-            }
+      let(:attributes) do
+        {
+          ab: {
+            cd: {
+              child: { age: '1', name: 'pawel', skip: 'av' }
+            },
+            ef: [
+              { age: '31', name: 'Pawel', skip: 'wrong' },
+              { age: '32', name: 'Sylwia', skip: 'bad' }
+            ],
+            gh: [
+              { age: '31', name: 'Pawel', skip: 'wrong' },
+              { age: '32', name: 'Sylwia', skip: 'bad' },
+              { age: '32', name: 'Sylwia', skip: 'bad' }
+            ]
           }
-        ) do
+        }
+      end
+
+      it 'hold proper structure' do
+        test_obj = object_factory(attributes: attributes) do
           property :ab do
             property :cd do
               property :child, model: ChildModel do
@@ -307,6 +320,48 @@ describe LightForm::Form do
         end
 
         expect(test_obj.valid?).to eq(false)
+      end
+
+      it 'to_h' do
+        test_obj = object_factory(attributes: attributes) do
+          property :ab do
+            property :cd do
+              property :child, model: ChildModel do
+                properties :name, :age
+              end
+            end
+
+            property :ef, collection: true do
+              property :name
+              property :age, with: -> (v) { v.to_i }
+            end
+
+            property :gh, collection: ChildModel, uniq: true do
+              properties :name, :age
+            end
+
+            property :ij, collection: true, with: -> (v) { (v.nil? || v.empty?) ? [] : v }
+          end
+        end
+
+        expect(test_obj.to_h).to eq(
+          {
+            ab: {
+              cd: {
+                child: ChildModel.new(age: '1', name: 'pawel')
+              },
+              ef: [
+                { age: 31, name: 'Pawel' },
+                { age: 32, name: 'Sylwia' }
+              ],
+              gh: [
+                ChildModel.new(age: '31', name: 'Pawel'),
+                ChildModel.new(age: '32', name: 'Sylwia')
+              ],
+              ij: []
+            }
+          }
+        )
       end
     end
   end

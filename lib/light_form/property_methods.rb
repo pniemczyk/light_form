@@ -182,5 +182,9 @@ module LightForm
         params[k] = params[k].is_a?(Array) ? params[k].map { |s| v[:class].new(s) } : v[:class].new(params[k])
       end
     end
+
+    def attributes
+      OpenStruct.new(keys: self.class.config[:properties])
+    end
   end
 end
