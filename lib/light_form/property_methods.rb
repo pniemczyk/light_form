@@ -82,11 +82,12 @@ module LightForm
     private
 
     def _prepare_params(value)
+      return if value.nil?
       params = value.clone
       properties = self.class.config[:properties] || []
       return params if properties.empty?
-      _prepare_params_keys_and_values!(params)
       _prepare_sources(params)
+      _prepare_params_keys_and_values!(params)
       params.extract!(*properties)
     end
 
@@ -133,6 +134,8 @@ module LightForm
 
     def _prepare_sources(params)
       (self.class.config[:properties_sources] || {}).each do |k, v|
+        next unless params[k]
+        next params[k] = params[k].map { |s| v.new(s) } if params[k].is_a?(Array)
         params[k] = v.new(params[k])
       end
     end

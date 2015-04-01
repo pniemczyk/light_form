@@ -212,19 +212,56 @@ describe LightForm::Form do
       end
 
     end
-    context 'add nested' do
-      it 'is awesome' do
-        test_obj = object_factory(attributes: { ab: { cd: { child: { age: '1' } }} }) do
+    context 'add nested', focus: true do
+      it 'hold proper structure' do
+        test_obj = object_factory(
+          attributes: {
+            ab: {
+              cd: {
+                child: { age: '1', name: 'pawel', skip: 'av' }
+              },
+              ef: [
+                { age: '31', name: 'Pawel', skip: 'wrong' },
+                { age: '32', name: 'Sylwia', skip: 'bad' }
+              ],
+              gh: [
+                { age: '31', name: 'Pawel', skip: 'wrong' },
+                { age: '32', name: 'Sylwia', skip: 'bad' },
+                { age: '32', name: 'Sylwia', skip: 'bad' }
+              ]
+            }
+          }
+        ) do
           property :ab do
             property :cd do
-              property :child, model: ChildModel
+              property :child, model: ChildModel do
+                properties :name, :age
+              end
             end
+
+            property :ef, collection: true do
+              property :name
+              property :age, with: -> (v) { v.to_i }
+            end
+
+            property :gh, collection: ChildModel, uniq: true do
+              properties :name, :age
+            end
+
+            property :ij, collection: true, with: -> (v) { (v.nil? || v.empty?) ? [] : v }
           end
         end
 
         expect(test_obj.ab).not_to eq(nil)
         expect(test_obj.ab.cd.child).to be_a(ChildModel)
         expect(test_obj.ab.cd.child.age).to eq('1')
+        expect(test_obj.ab.cd.child.name).to eq('pawel')
+        expect { test_obj.ab.cd.child.skip }.to raise_error
+        expect(test_obj.ab.ef[0].name).to eq('Pawel')
+        expect(test_obj.ab.ef[0].age).to eq(31)
+        expect(test_obj.ab.gh[0]).to be_a(ChildModel)
+        expect(test_obj.ab.gh.count).to eq(2)
+        expect(test_obj.ab.ij).to eq([])
       end
     end
   end
