@@ -74,13 +74,13 @@ module LightForm
     end
 
     def valid?
-      return (_check_validation && super) unless errors_overriden?
+      return [_check_validation, super].all? unless errors_overriden?
       @_errors = @errors
       @errors ||= ActiveModel::Errors.new(self)
       stored_method = method(:errors)
       errors_method = -> { @errors }
       define_singleton_method(:errors) { errors_method.call }
-      result, store, @_errors, @errors = (_check_validation && super), @_errors, @errors, store
+      result, store, @_errors, @errors = [_check_validation, super].all?, @_errors, @errors, store
       define_singleton_method(:errors) { stored_method.call }
       result
     end
@@ -92,17 +92,18 @@ module LightForm
     end
 
     def _check_validation
-      @errors = ActiveModel::Errors.new(self)
+      @errors ||= ActiveModel::Errors.new(self)
       properties = _properties.delete(_properties_sources.keys)
       properties.each do |prop|
         public_send(prop).tap do |subject|
           items = subject.is_a?(Array) ? subject.map(&method(:_validation_errors)).compact : _validation_errors(subject)
-          @errors.add(prop, items) if items && !items.empty?
+          @errors.add(prop, items) if items && !items.empty? # TODO resolve problem with [ nil, nil ] arrays of nil values
         end
       end
       _properties_sources.each do |prop, v|
         next unless v[:params]
         subject = v[:params].clone
+        # Resolve problem with nil in array
         items = subject.is_a?(Array) ? subject.map(&method(:_validation_errors)) : _validation_errors(v[:params])
         @errors.add(prop, items) if items && !items.empty?
       end
