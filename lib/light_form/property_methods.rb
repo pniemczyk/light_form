@@ -1,7 +1,11 @@
 require 'set'
+require 'active_support'
 
 module LightForm
   module PropertyMethods
+    TransformationError    = Class.new(StandardError)
+    MissingCollectionError = Class.new(StandardError)
+
     def self.included(base)
       base.extend(ClassMethods)
     end
@@ -27,8 +31,9 @@ module LightForm
 
       def _add_property_source(prop_name, &block)
         klass = Class.new(Lash)
+        klass.class_eval("def self.name; \"#{ActiveSupport::Inflector.classify(prop_name)}\"; end")
         klass.class_eval(&block)
-        _properties_sources[prop_name] = klass
+        _properties_sources[prop_name] = { class: klass }
       end
 
       def _properties_sources
@@ -68,27 +73,56 @@ module LightForm
     end
 
     def valid?
-      return super unless errors_overriden?
+      return (_check_validation && super) unless errors_overriden?
       @_errors = @errors
       @errors  = ActiveModel::Errors.new(self)
       stored_method = method(:errors)
       errors_method = -> { @errors }
       define_singleton_method(:errors) { errors_method.call }
-      result, store, @_errors, @errors = super, @_errors, @errors, store
+      result, store, @_errors, @errors = (_check_validation && super), @_errors, @errors, store
       define_singleton_method(:errors) { stored_method.call }
       result
     end
 
     private
 
+    def _validation_errors(obj)
+      obj.errors if obj.respond_to?(:valid?) && !obj.valid?
+    end
+
+    def _check_validation
+      @errors = ActiveModel::Errors.new(self)
+      properties = _properties.delete(_properties_sources.keys)
+      properties.each do |prop|
+        public_send(prop).tap do |subject|
+          items = subject.is_a?(Array) ? subject.map(&method(:_validation_errors)).compact : _validation_errors(subject)
+          @errors.add(prop, items) if items && !items.empty?
+        end
+      end
+      _properties_sources.each do |prop, v|
+        next unless v[:params]
+        subject = v[:params].clone
+        items = subject.is_a?(Array) ? subject.map(&method(:_validation_errors)) : _validation_errors(v[:params])
+        @errors.add(prop, items) if items && !items.empty?
+      end
+      @errors.empty?
+    end
+
+    def _properties_sources
+      @_properties_sources ||= self.class.config[:properties_sources] || {}
+    end
+
+    def _properties
+      @_properties ||= self.class.config[:properties] || []
+    end
+
     def _prepare_params(value)
       return if value.nil?
       params = value.clone
-      properties = self.class.config[:properties] || []
-      return params if properties.empty?
+      return params if _properties.empty?
       _prepare_sources(params)
       _prepare_params_keys_and_values!(params)
-      params.extract!(*properties)
+      params.extract!(*_properties)
     end
 
     def _prepare_params_keys_and_values!(params)
@@ -116,27 +150,34 @@ module LightForm
       return unless transformation
       trans_proc  = transformation.is_a?(Symbol) ? method(transformation) : transformation
       params[key] = trans_proc.call(params[key])
+    rescue => e
+      raise TransformationError, "key #{key}: #{e.message}"
     end
 
     def _modelable_value!(params, key, hash)
       return unless hash[:model]
+      _save_source_params(key, params[key])
       params[key] = hash[:model].new(params[key])
+    end
+
+    def _save_source_params(key, params)
+      _properties_sources[key][:params] = params.clone if _properties_sources[key]
     end
 
     def _collectionaize_value!(params, key, hash)
       return unless hash[:collection]
       array = params[key]
-      fail("#{self.class}: #{key} is not collection") unless array.is_a? Array
+      fail(MissingCollectionError, "on key: #{key}") unless array.is_a? Array
       array.uniq! if hash[:uniq]
       return params[key] = array if hash[:collection] == true
+      _save_source_params(key, array.compact)
       params[key] = array.compact.map { |source| hash[:collection].new(source) }
     end
 
     def _prepare_sources(params)
-      (self.class.config[:properties_sources] || {}).each do |k, v|
+      _properties_sources.each do |k, v|
         next unless params[k]
-        next params[k] = params[k].map { |s| v.new(s) } if params[k].is_a?(Array)
-        params[k] = v.new(params[k])
+        params[k] = params[k].is_a?(Array) ? params[k].map { |s| v[:class].new(s) } : v[:class].new(params[k])
       end
     end
   end

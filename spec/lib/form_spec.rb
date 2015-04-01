@@ -212,7 +212,7 @@ describe LightForm::Form do
       end
 
     end
-    context 'add nested', focus: true do
+    context 'add nested' do
       it 'hold proper structure' do
         test_obj = object_factory(
           attributes: {
@@ -262,6 +262,44 @@ describe LightForm::Form do
         expect(test_obj.ab.gh[0]).to be_a(ChildModel)
         expect(test_obj.ab.gh.count).to eq(2)
         expect(test_obj.ab.ij).to eq([])
+      end
+
+      it 'validation works' do
+        test_obj = object_factory(
+          attributes: {
+            test: {
+              child: { age: '1', name: '', skip: 'av' },
+              children_hash: [
+                { age: '31', name: '', skip: 'wrong' },
+                { age: '32', name: 'Sylwia', skip: 'bad' }
+              ],
+              children: [
+                { age: '31', name: 'Pawel', skip: 'wrong' },
+                { age: '32', name: '', skip: 'bad' },
+                { age: '32', name: '', skip: 'bad' }
+              ]
+            }
+          }
+        ) do
+          property :test do
+            property :child, model: ChildModel do
+              property :name, validates: { presence: true }
+              property :age, validates: { numericality: true }
+            end
+
+            property :children_hash, collection: true do
+              property :name, validates: { presence: true }
+              property :age, with: -> (v) { v.to_i }
+            end
+
+            property :children, collection: ChildModel, uniq: true do
+              property :name, validates: { presence: true }
+              property :age, validates: { numericality: true }
+            end
+          end
+        end
+
+        expect(test_obj.valid?).to eq(false)
       end
     end
   end
