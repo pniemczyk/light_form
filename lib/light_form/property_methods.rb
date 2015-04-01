@@ -119,7 +119,7 @@ module LightForm
 
     def _prepare_params(value)
       return if value.nil?
-      params = value.clone
+      params = value.clone.symbolize_keys
       return params if _properties.empty?
       _prepare_sources(params)
       _prepare_params_keys_and_values!(params)

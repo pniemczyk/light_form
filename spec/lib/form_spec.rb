@@ -181,7 +181,7 @@ describe LightForm::Form do
           end
 
           it 'returns array of models' do
-            expect(subject.children.map { |m| m.class }).to eq([ChildModel, ChildModel])
+            expect(subject.children.map(&:class)).to eq([ChildModel, ChildModel])
             expect(subject.children.count).to eq(2)
             expect(subject.children.first.name).to eq('Tom')
             expect(subject.children.last.name).to eq('Emi')
@@ -203,7 +203,7 @@ describe LightForm::Form do
           end
 
           it 'returns array of models' do
-            expect(subject.children.map { |m| m.class }).to eq([ChildModel])
+            expect(subject.children.map(&:class)).to eq([ChildModel])
             expect(subject.children.count).to eq(1)
             expect(subject.children.first.name).to eq('Tom')
           end
@@ -211,7 +211,6 @@ describe LightForm::Form do
       end
 
       context 'add with :required option' do
-
         it 'raise MissingParamError when required param missing' do
           expect {
             object_factory { property :abc, required: true }
