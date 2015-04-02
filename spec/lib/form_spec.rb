@@ -6,12 +6,30 @@ describe LightForm::Form do
       [:name, :age].map { |attr| public_send("#{attr}") }
     end
 
-    def ==(o)
-      eql?(o)
+    def ==(other)
+      eql?(other)
     end
 
-    def eql?(o)
-      o.class == self.class && o.equality_state == equality_state
+    def eql?(other)
+      other.class == self.class && other.equality_state == equality_state
+    end
+  end
+
+
+  class AddressModel
+    include ActiveModel::Model
+    attr_accessor :street, :post_code
+
+    def equality_state
+      [:street, :post_code].map { |attr| public_send("#{attr}") }
+    end
+
+    def ==(other)
+      eql?(other)
+    end
+
+    def eql?(other)
+      other.class == self.class && other.equality_state == equality_state
     end
   end
 
@@ -323,45 +341,51 @@ describe LightForm::Form do
       end
 
       it 'to_h' do
-        test_obj = object_factory(attributes: attributes) do
-          property :ab do
-            property :cd do
-              property :child, model: ChildModel do
-                properties :name, :age
-              end
-            end
+        attrs = {
+          title: 'Mr',
+          first_name: 'Pawel',
+          last_name: 'Awesome',
+          email: nil,
+          age: '31',
+          address: { street: 'Best', post_code: '33333' },
+          children: [{ name: 'Emi', age: '2' }, { name: 'Emi', age: '2' }, { name: '', age: '2' }],
+          interests: %w(football football basketball football)
+        }
 
-            property :ef, collection: true do
-              property :name
-              property :age, with: -> (v) { v.to_i }
-            end
+        test_obj = object_factory(real_class_name: 'PersonForm', attributes: attrs) do
+          properties :title, :first_name, :last_name
+          property :email, validates: { presence: true }
+          property :age, with: -> (v) { v.to_i }
 
-            property :gh, collection: ChildModel, uniq: true do
-              properties :name, :age
-            end
-
-            property :ij, collection: true, with: -> (v) { (v.nil? || v.empty?) ? [] : v }
+          property :address, model: AddressModel do
+            properties :street, :post_code
           end
+
+          property :children, collection: ChildModel, uniq: true do
+            property :name, validates: { presence: true }
+            property :age, with: -> (v) { v.to_i }
+          end
+
+          property :interests, collection: true, uniq: true
         end
 
         expect(test_obj.to_h).to eq(
-          {
-            ab: {
-              cd: {
-                child: ChildModel.new(age: '1', name: 'pawel')
-              },
-              ef: [
-                { age: 31, name: 'Pawel' },
-                { age: 32, name: 'Sylwia' }
-              ],
-              gh: [
-                ChildModel.new(age: '31', name: 'Pawel'),
-                ChildModel.new(age: '32', name: 'Sylwia')
-              ],
-              ij: []
-            }
-          }
+          address: AddressModel.new(attrs[:address]),
+          age: 31,
+          children: [ChildModel.new(name: 'Emi', age: 2), ChildModel.new(name: '', age: 2)],
+          email: nil,
+          first_name: attrs[:first_name],
+          interests: %w(football basketball),
+          last_name: attrs[:last_name],
+          title: attrs[:title]
         )
+
+        expect(test_obj.valid?).to eq(false)
+        expect(test_obj.errors.as_json).to eq(
+          children: [{1=>{name: ["can't be blank"]}}],
+          email: ["can't be blank"]
+        )
+
       end
     end
   end

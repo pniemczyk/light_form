@@ -75,17 +75,21 @@ module LightForm
 
     def valid?(context = nil)
       @errors = ActiveModel::Errors.new(self)
-      return [_check_validation, _valid_without_clear?(context)].all? unless errors_overriden?
+      return _form_valid?(context) unless errors_overriden?
       @_errors = @errors
       stored_method = method(:errors)
       errors_method = -> { @errors }
       define_singleton_method(:errors) { errors_method.call }
-      result, store, @_errors, @errors = [_check_validation, _valid_without_clear?(context)].all?, @_errors, @errors, store
+      result, _store, @_errors, @errors = _form_valid?(context), @_errors, @errors, _store
       define_singleton_method(:errors) { stored_method.call }
       result
     end
 
     private
+
+    def _form_valid?(context)
+      [_check_validation, _valid_without_clear?(context)].all?
+    end
 
     def _valid_without_clear?(context = nil)
       current_context, self.validation_context = validation_context, context
@@ -98,20 +102,31 @@ module LightForm
       obj.errors if obj.respond_to?(:valid?) && !obj.valid?
     end
 
+    def _array_validation_errors(obj)
+      {}.tap do |errors_list|
+        obj.each_with_index do |item, idx|
+          next if !item.respond_to?(:valid?) || item.valid?
+          errors_list[idx] = item.errors.as_json
+        end
+        return if errors_list.empty?
+      end
+    end
+
     def _check_validation
+      # copy errors from lash to model for forms on view
       @errors = ActiveModel::Errors.new(self)
       properties = _properties.delete(_properties_sources.keys)
       properties.each do |prop|
         public_send(prop).tap do |subject|
-          items = subject.is_a?(Array) ? subject.map(&method(:_validation_errors)).compact : _validation_errors(subject)
-          @errors.add(prop, items) if items && !items.empty? # TODO resolve problem with [ nil, nil ] arrays of nil values
+          items = subject.is_a?(Array) ? _array_validation_errors(subject) : _validation_errors(subject)
+          @errors.add(prop, items) if items && !items.empty?
         end
       end
+
       _properties_sources.each do |prop, v|
         next unless v[:params]
         subject = v[:params].clone
-        # Resolve problem with nil in array
-        items = subject.is_a?(Array) ? subject.map(&method(:_validation_errors)) : _validation_errors(v[:params])
+        items = subject.is_a?(Array) ? _array_validation_errors(subject) : _validation_errors(v[:params])
         @errors.add(prop, items) if items && !items.empty?
       end
       @errors.empty?
