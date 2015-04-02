@@ -1,6 +1,6 @@
 # LightForm
 
-TODO: Write a gem description
+Build form from specific params and custom validation
 
 ## Installation
 
